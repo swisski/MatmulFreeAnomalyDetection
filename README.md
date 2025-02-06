@@ -1,6 +1,6 @@
 # Network Anomaly Detection Comparison ft. Matmul-free and Classic Neural Network
 
-## View our project report!
+## View our project report
 (assuming cloned and in repo)
 ```bash
 $cd docs/
@@ -16,3 +16,8 @@ You may need to install certain packages related to SPHINX (how we created the r
 - Install pandoc to your system
     - sudo apt-get install pandoc (linux)
     - brew install pandoc (mac)
+ 
+## Collaborators
+- swisski
+- awilliams201
+- aalonso20
