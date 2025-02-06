@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Project Notebook &#8212; Network Anomaly Detection with BitNet  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d1102ebc" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=686e5160" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
+    <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Our Model: Efficient Intrusion Detection System" href="efficient_ids.html" />
+    <link rel="prev" title="Network Anomaly Detection with BitNet | Intrusion Detection System (IDS)" href="../index.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="Project-Notebook">
+<h1>Project Notebook<a class="headerlink" href="#Project-Notebook" title="Link to this heading">¶</a></h1>
+<p>Project Topic: Network Anomaly Detection with BitNet Project Description: One of the main problems with machine learning models on a large scale is their resource-intensive nature. This can cause massive spikes in both energy usage and runtime, which is especially problematic in fields such as networking, where latency is of the utmost importance. Our goal with this project is to transfer the principles of BitNet, a recent model which does away with resource-intensive matrix multiplications via
+the quantization of weights, to a networking context. Specifically, we build a simple regression model with this method, which we will then use on a dataset of packet traces during which several intrusions were attempted.</p>
+<p>Collaborators: Alexander Baumgartner, Alexander Williams, Alejandro Alonso</p>
+<p>Professor: Nick Feamster</p>
+<hr class="docutils" />
+<section id="Notebook-Summary">
+<h2>Notebook Summary<a class="headerlink" href="#Notebook-Summary" title="Link to this heading">¶</a></h2>
+<p>This notebook evaluates the performance of different IDS models, focusing on both the standard and hardware-efficient variants. It recreates the functionality of <code class="docutils literal notranslate"><span class="pre">measure_models.py</span></code> in a notebook format and includes the integration function directly for better visibility.</p>
+<hr class="docutils" />
+</section>
+<section id="Packages">
+<h2>Packages<a class="headerlink" href="#Packages" title="Link to this heading">¶</a></h2>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%</span><span class="k">pip</span> install matplotlib scikit-learn pandas numpy scipy torch tqdm joblib pathlib psutil pyRapl
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Collecting matplotlib
+  Downloading matplotlib-3.9.3-cp311-cp311-macosx_11_0_arm64.whl.metadata (11 kB)
+Collecting scikit-learn
+  Downloading scikit_learn-1.6.0-cp311-cp311-macosx_12_0_arm64.whl.metadata (31 kB)
+Collecting pandas
+  Downloading pandas-2.2.3-cp311-cp311-macosx_11_0_arm64.whl.metadata (89 kB)
+     <span class="ansi-black-intense-fg">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span> <span class="ansi-green-fg">89.9/89.9 kB</span> <span class="ansi-red-fg">3.2 MB/s</span> eta <span class="ansi-cyan-fg">0:00:00</span>
+Requirement already satisfied: numpy in /opt/homebrew/lib/python3.11/site-packages (2.1.2)
+Collecting scipy
+  Downloading scipy-1.14.1-cp311-cp311-macosx_14_0_arm64.whl.metadata (60 kB)
+     <span class="ansi-black-intense-fg">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span> <span class="ansi-green-fg">60.8/60.8 kB</span> <span class="ansi-red-fg">7.0 MB/s</span> eta <span class="ansi-cyan-fg">0:00:00</span>
+Collecting torch
+  Downloading torch-2.5.1-cp311-none-macosx_11_0_arm64.whl.metadata (28 kB)
+Collecting tqdm
+  Using cached tqdm-4.67.1-py3-none-any.whl.metadata (57 kB)
+Collecting joblib
+  Using cached joblib-1.4.2-py3-none-any.whl.metadata (5.4 kB)
+Collecting pathlib
+  Using cached pathlib-1.0.1-py3-none-any.whl.metadata (5.1 kB)
+Requirement already satisfied: psutil in /Users/alexwilliams/Library/Python/3.11/lib/python/site-packages (5.9.8)
+Collecting pyRapl
+  Using cached pyRAPL-0.2.3.1-py2.py3-none-any.whl.metadata (8.0 kB)
+Collecting contourpy&gt;=1.0.1 (from matplotlib)
+  Downloading contourpy-1.3.1-cp311-cp311-macosx_11_0_arm64.whl.metadata (5.4 kB)
+Collecting cycler&gt;=0.10 (from matplotlib)
+  Using cached cycler-0.12.1-py3-none-any.whl.metadata (3.8 kB)
+Collecting fonttools&gt;=4.22.0 (from matplotlib)
+  Downloading fonttools-4.55.3-cp311-cp311-macosx_10_9_universal2.whl.metadata (165 kB)
+     <span class="ansi-black-intense-fg">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span> <span class="ansi-green-fg">165.1/165.1 kB</span> <span class="ansi-red-fg">7.7 MB/s</span> eta <span class="ansi-cyan-fg">0:00:00</span>
+Collecting kiwisolver&gt;=1.3.1 (from matplotlib)
+  Downloading kiwisolver-1.4.7-cp311-cp311-macosx_11_0_arm64.whl.metadata (6.3 kB)
+Requirement already satisfied: packaging&gt;=20.0 in /Users/alexwilliams/Library/Python/3.11/lib/python/site-packages (from matplotlib) (24.0)
+Collecting pillow&gt;=8 (from matplotlib)
+  Downloading pillow-11.0.0-cp311-cp311-macosx_11_0_arm64.whl.metadata (9.1 kB)
+Collecting pyparsing&gt;=2.3.1 (from matplotlib)
+  Using cached pyparsing-3.2.0-py3-none-any.whl.metadata (5.0 kB)
+Requirement already satisfied: python-dateutil&gt;=2.7 in /Users/alexwilliams/Library/Python/3.11/lib/python/site-packages (from matplotlib) (2.9.0.post0)
+Collecting threadpoolctl&gt;=3.1.0 (from scikit-learn)
+  Using cached threadpoolctl-3.5.0-py3-none-any.whl.metadata (13 kB)
+Collecting pytz&gt;=2020.1 (from pandas)
+  Using cached pytz-2024.2-py2.py3-none-any.whl.metadata (22 kB)
+Collecting tzdata&gt;=2022.7 (from pandas)
+  Using cached tzdata-2024.2-py2.py3-none-any.whl.metadata (1.4 kB)
+Collecting filelock (from torch)
+  Using cached filelock-3.16.1-py3-none-any.whl.metadata (2.9 kB)
+Requirement already satisfied: typing-extensions&gt;=4.8.0 in /Users/alexwilliams/Library/Python/3.11/lib/python/site-packages (from torch) (4.11.0)
+Collecting networkx (from torch)
+  Using cached networkx-3.4.2-py3-none-any.whl.metadata (6.3 kB)
+Collecting jinja2 (from torch)
+  Using cached jinja2-3.1.4-py3-none-any.whl.metadata (2.6 kB)
+Collecting fsspec (from torch)
+  Using cached fsspec-2024.10.0-py3-none-any.whl.metadata (11 kB)
+Collecting sympy==1.13.1 (from torch)
+  Using cached sympy-1.13.1-py3-none-any.whl.metadata (12 kB)
+Collecting mpmath&lt;1.4,&gt;=1.1.0 (from sympy==1.13.1-&gt;torch)
+  Using cached mpmath-1.3.0-py3-none-any.whl.metadata (8.6 kB)
+Requirement already satisfied: six&gt;=1.5 in /Users/alexwilliams/Library/Python/3.11/lib/python/site-packages (from python-dateutil&gt;=2.7-&gt;matplotlib) (1.16.0)
+Collecting MarkupSafe&gt;=2.0 (from jinja2-&gt;torch)
+  Downloading MarkupSafe-3.0.2-cp311-cp311-macosx_11_0_arm64.whl.metadata (4.0 kB)
+Downloading matplotlib-3.9.3-cp311-cp311-macosx_11_0_arm64.whl (7.8 MB)
+   <span class="ansi-black-intense-fg">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span> <span class="ansi-green-fg">7.8/7.8 MB</span> <span class="ansi-red-fg">22.4 MB/s</span> eta <span class="ansi-cyan-fg">0:00:00</span>00:0100:01
+Downloading scikit_learn-1.6.0-cp311-cp311-macosx_12_0_arm64.whl (11.1 MB)
+   <span class="ansi-black-intense-fg">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span> <span class="ansi-green-fg">11.1/11.1 MB</span> <span class="ansi-red-fg">23.4 MB/s</span> eta <span class="ansi-cyan-fg">0:00:00</span>00:0100:01
+Downloading pandas-2.2.3-cp311-cp311-macosx_11_0_arm64.whl (11.3 MB)
+   <span class="ansi-black-intense-fg">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span> <span class="ansi-green-fg">11.3/11.3 MB</span> <span class="ansi-red-fg">22.0 MB/s</span> eta <span class="ansi-cyan-fg">0:00:00</span>a <span class="ansi-cyan-fg">0:00:01</span>
+Downloading scipy-1.14.1-cp311-cp311-macosx_14_0_arm64.whl (23.1 MB)
+   <span class="ansi-black-intense-fg">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span> <span class="ansi-green-fg">23.1/23.1 MB</span> <span class="ansi-red-fg">22.4 MB/s</span> eta <span class="ansi-cyan-fg">0:00:00</span>00:0100:01
+Downloading torch-2.5.1-cp311-none-macosx_11_0_arm64.whl (63.9 MB)
+   <span class="ansi-black-intense-fg">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span> <span class="ansi-green-fg">63.9/63.9 MB</span> <span class="ansi-red-fg">19.7 MB/s</span> eta <span class="ansi-cyan-fg">0:00:00</span>00:0100:01
+Using cached sympy-1.13.1-py3-none-any.whl (6.2 MB)
+Using cached tqdm-4.67.1-py3-none-any.whl (78 kB)
+Using cached joblib-1.4.2-py3-none-any.whl (301 kB)
+Using cached pathlib-1.0.1-py3-none-any.whl (14 kB)
+Using cached pyRAPL-0.2.3.1-py2.py3-none-any.whl (27 kB)
+Downloading contourpy-1.3.1-cp311-cp311-macosx_11_0_arm64.whl (254 kB)
+   <span class="ansi-black-intense-fg">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span> <span class="ansi-green-fg">254.5/254.5 kB</span> <span class="ansi-red-fg">15.1 MB/s</span> eta <span class="ansi-cyan-fg">0:00:00</span>
+Using cached cycler-0.12.1-py3-none-any.whl (8.3 kB)
+Downloading fonttools-4.55.3-cp311-cp311-macosx_10_9_universal2.whl (2.8 MB)
+   <span class="ansi-black-intense-fg">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span> <span class="ansi-green-fg">2.8/2.8 MB</span> <span class="ansi-red-fg">19.7 MB/s</span> eta <span class="ansi-cyan-fg">0:00:00</span>a <span class="ansi-cyan-fg">0:00:01</span>
+Downloading kiwisolver-1.4.7-cp311-cp311-macosx_11_0_arm64.whl (64 kB)
+   <span class="ansi-black-intense-fg">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span> <span class="ansi-green-fg">64.3/64.3 kB</span> <span class="ansi-red-fg">5.2 MB/s</span> eta <span class="ansi-cyan-fg">0:00:00</span>
+Downloading pillow-11.0.0-cp311-cp311-macosx_11_0_arm64.whl (3.0 MB)
+   <span class="ansi-black-intense-fg">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span> <span class="ansi-green-fg">3.0/3.0 MB</span> <span class="ansi-red-fg">24.0 MB/s</span> eta <span class="ansi-cyan-fg">0:00:00</span>00:0100:01
+Using cached pyparsing-3.2.0-py3-none-any.whl (106 kB)
+Using cached pytz-2024.2-py2.py3-none-any.whl (508 kB)
+Using cached threadpoolctl-3.5.0-py3-none-any.whl (18 kB)
+Using cached tzdata-2024.2-py2.py3-none-any.whl (346 kB)
+Using cached filelock-3.16.1-py3-none-any.whl (16 kB)
+Using cached fsspec-2024.10.0-py3-none-any.whl (179 kB)
+Using cached jinja2-3.1.4-py3-none-any.whl (133 kB)
+Using cached networkx-3.4.2-py3-none-any.whl (1.7 MB)
+Downloading MarkupSafe-3.0.2-cp311-cp311-macosx_11_0_arm64.whl (12 kB)
+Using cached mpmath-1.3.0-py3-none-any.whl (536 kB)
+Installing collected packages: pytz, pathlib, mpmath, tzdata, tqdm, threadpoolctl, sympy, scipy, pyRapl, pyparsing, pillow, networkx, MarkupSafe, kiwisolver, joblib, fsspec, fonttools, filelock, cycler, contourpy, scikit-learn, pandas, matplotlib, jinja2, torch
+Successfully installed MarkupSafe-3.0.2 contourpy-1.3.1 cycler-0.12.1 filelock-3.16.1 fonttools-4.55.3 fsspec-2024.10.0 jinja2-3.1.4 joblib-1.4.2 kiwisolver-1.4.7 matplotlib-3.9.3 mpmath-1.3.0 networkx-3.4.2 pandas-2.2.3 pathlib-1.0.1 pillow-11.0.0 pyRapl-0.2.3.1 pyparsing-3.2.0 pytz-2024.2 scikit-learn-1.6.0 scipy-1.14.1 sympy-1.13.1 threadpoolctl-3.5.0 torch-2.5.1 tqdm-4.67.1 tzdata-2024.2
+
+<span class="ansi-bold">[</span><span class="ansi-blue-fg">notice</span><span class="ansi-bold">]</span> A new release of pip is available: <span class="ansi-red-fg">24.0</span> -&gt; <span class="ansi-green-fg">24.3.1</span>
+<span class="ansi-bold">[</span><span class="ansi-blue-fg">notice</span><span class="ansi-bold">]</span> To update, run: <span class="ansi-green-fg">python3.11 -m pip install --upgrade pip</span>
+Note: you may need to restart the kernel to use updated packages.
+</pre></div></div>
+</div>
+</section>
+<section id="Setup-and-Initialization">
+<h2>Setup and Initialization<a class="headerlink" href="#Setup-and-Initialization" title="Link to this heading">¶</a></h2>
+<p><em>This cell imports all necessary libraries and checks for optional features like pyRAPL for energy monitoring.</em></p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">import</span> <span class="nn">psutil</span>
+<span class="kn">import</span> <span class="nn">platform</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span>
+<span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="kn">import</span> <span class="n">confusion_matrix</span><span class="p">,</span> <span class="n">ConfusionMatrixDisplay</span>
+<span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="kn">import</span> <span class="n">classification_report</span><span class="p">,</span> <span class="n">precision_recall_curve</span><span class="p">,</span> <span class="n">auc</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">pyRAPL</span>
+    <span class="n">PYRAPL_AVAILABLE</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">PYRAPL_AVAILABLE</span> <span class="o">=</span> <span class="kc">False</span>
+</pre></div>
+</div>
+</div>
+<p><em>This cell imports necessary models and helpers from our py scripts.</em></p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">models.baseline</span> <span class="kn">import</span> <span class="n">StandardIDS</span>
+<span class="kn">from</span> <span class="nn">models.efficient_ids</span> <span class="kn">import</span> <span class="n">EfficientIDS</span>
+
+<span class="kn">from</span> <span class="nn">helpers.ids_processor</span> <span class="kn">import</span> <span class="n">IDSProcessor</span>
+<span class="kn">from</span> <span class="nn">helpers.data_processor</span> <span class="kn">import</span> <span class="n">MemoryEfficientIDSDataProcessor</span>
+</pre></div>
+</div>
+</div>
+<p><em>This cell establishes notebook-wide constants.</em></p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">SAVED_MODELS_DIR</span> <span class="o">=</span> <span class="s2">&quot;./saved_models&quot;</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="Data-Directory-and-Configurations">
+<h2>Data Directory and Configurations<a class="headerlink" href="#Data-Directory-and-Configurations" title="Link to this heading">¶</a></h2>
+<p><em>This cell defines parameters for data loading, including the location of the dataset and the size of data chunks for processing. These settings can be adjusted as needed.</em></p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data_dir</span> <span class="o">=</span> <span class="s1">&#39;data/&#39;</span>
+<span class="n">chunk_size</span> <span class="o">=</span> <span class="mi">100000</span>
+<span class="n">saved_model</span> <span class="o">=</span> <span class="s2">&quot;trained_matmulfree_model_12_11_24.pth&quot;</span>
+<span class="n">epochs</span> <span class="o">=</span> <span class="mi">20</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Data directory:&quot;</span><span class="p">,</span> <span class="n">data_dir</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Data directory: data/
+</pre></div></div>
+</div>
+</section>
+<section id="Integration-Function">
+<h2>Integration Function<a class="headerlink" href="#Integration-Function" title="Link to this heading">¶</a></h2>
+<p><em>The function handles data preprocessing, training, and evaluation for the IDS models. This cell includes the definition to ensure clarity and usability within the notebook.</em></p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">integrate_with_hardware_efficient_ids</span><span class="p">(</span>
+        <span class="n">data_dir</span><span class="p">,</span>
+        <span class="n">chunk_size</span><span class="o">=</span><span class="n">chunk_size</span><span class="p">,</span>
+        <span class="n">saved_model</span><span class="o">=</span><span class="n">saved_model</span><span class="p">,</span>
+        <span class="n">model_type</span><span class="o">=</span><span class="s1">&#39;matmul_free&#39;</span><span class="p">,</span>
+        <span class="n">epochs</span><span class="o">=</span><span class="n">epochs</span><span class="p">,</span>
+        <span class="n">callback</span><span class="o">=</span><span class="kc">None</span>
+    <span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Initializing data processor...&quot;</span><span class="p">)</span>
+    <span class="n">data_processor</span> <span class="o">=</span> <span class="n">MemoryEfficientIDSDataProcessor</span><span class="p">()</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Loading and preprocessing data...&quot;</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">feature_columns</span> <span class="o">=</span> <span class="n">data_processor</span><span class="o">.</span><span class="n">load_and_preprocess_data</span><span class="p">(</span><span class="n">data_dir</span><span class="p">,</span> <span class="n">chunk_size</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error during data processing: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Validating data...&quot;</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">X</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">(),</span> <span class="s2">&quot;X contains NaN values&quot;</span>
+    <span class="k">assert</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="n">X</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">(),</span> <span class="s2">&quot;X contains infinite values&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Data validation passed&quot;</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Splitting data...&quot;</span><span class="p">)</span>
+    <span class="n">X_train_val</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_train_val</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="n">train_test_split</span><span class="p">(</span>
+        <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span> <span class="n">stratify</span><span class="o">=</span><span class="n">y</span>
+    <span class="p">)</span>
+    <span class="n">X_train</span><span class="p">,</span> <span class="n">X_val</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_val</span> <span class="o">=</span> <span class="n">train_test_split</span><span class="p">(</span>
+        <span class="n">X_train_val</span><span class="p">,</span> <span class="n">y_train_val</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span> <span class="n">stratify</span><span class="o">=</span><span class="n">y_train_val</span>
+    <span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Initializing model...&quot;</span><span class="p">)</span>
+    <span class="n">ids_processor</span> <span class="o">=</span> <span class="n">IDSProcessor</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">callback</span><span class="p">:</span>
+        <span class="n">callback</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">saved_model</span> <span class="ow">and</span> <span class="n">Path</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">SAVED_MODELS_DIR</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">saved_model</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Loading saved model...&quot;</span><span class="p">)</span>
+        <span class="n">checkpoint</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">SAVED_MODELS_DIR</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">saved_model</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">map_location</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s1">&#39;cpu&#39;</span><span class="p">))</span>
+        <span class="n">ids_processor</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="p">(</span><span class="n">EfficientIDS</span> <span class="k">if</span> <span class="n">model_type</span> <span class="o">==</span> <span class="s1">&#39;matmul_free&#39;</span> <span class="k">else</span> <span class="n">StandardIDS</span><span class="p">)(</span>
+            <span class="n">num_features</span><span class="o">=</span><span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+            <span class="o">**</span><span class="n">checkpoint</span><span class="p">[</span><span class="s1">&#39;hyperparameters&#39;</span><span class="p">]</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">ids_processor</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Loading state dict...&quot;</span><span class="p">)</span>
+        <span class="n">ids_processor</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">load_state_dict</span><span class="p">(</span><span class="n">checkpoint</span><span class="p">[</span><span class="s1">&#39;model_state_dict&#39;</span><span class="p">])</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Training new model...&quot;</span><span class="p">)</span>
+        <span class="k">def</span> <span class="nf">training_callback</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">callback</span><span class="p">:</span>
+                <span class="n">callback</span><span class="p">()</span>
+
+        <span class="n">ids_processor</span><span class="o">.</span><span class="n">train_model</span><span class="p">(</span>
+            <span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span>
+            <span class="n">X_val</span><span class="p">,</span> <span class="n">y_val</span><span class="p">,</span>
+            <span class="n">epochs</span><span class="o">=</span><span class="n">epochs</span><span class="p">,</span>
+            <span class="n">model_type</span><span class="o">=</span><span class="n">model_type</span><span class="p">,</span>
+            <span class="n">callback</span><span class="o">=</span><span class="n">training_callback</span>
+        <span class="p">)</span>
+
+        <span class="n">checkpoint</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;model_state_dict&#39;</span><span class="p">:</span> <span class="n">ids_processor</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">state_dict</span><span class="p">(),</span>
+            <span class="s1">&#39;hyperparameters&#39;</span><span class="p">:</span> <span class="n">ids_processor</span><span class="o">.</span><span class="n">config</span><span class="p">,</span>
+            <span class="s1">&#39;feature_stats&#39;</span><span class="p">:</span> <span class="n">data_processor</span><span class="o">.</span><span class="n">feature_stats</span>
+        <span class="p">}</span>
+        <span class="n">torch</span><span class="o">.</span><span class="n">save</span><span class="p">(</span>
+            <span class="n">checkpoint</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">SAVED_MODELS_DIR</span><span class="si">}</span><span class="s1">/trained_</span><span class="si">{</span><span class="n">model_type</span><span class="si">}</span><span class="s1">_model_</span><span class="si">{</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%m</span><span class="si">%d</span><span class="s2">%Y-%H%M%S&quot;</span><span class="p">)</span><span class="si">}</span><span class="s1">.pth&#39;</span>
+        <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">callback</span><span class="p">:</span>
+        <span class="n">callback</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">ids_processor</span><span class="p">,</span> <span class="p">{</span>
+        <span class="s1">&#39;X_test&#39;</span><span class="p">:</span> <span class="n">X_test</span><span class="p">,</span>
+        <span class="s1">&#39;y_test&#39;</span><span class="p">:</span> <span class="n">y_test</span><span class="p">,</span>
+        <span class="s1">&#39;feature_columns&#39;</span><span class="p">:</span> <span class="n">feature_columns</span>
+    <span class="p">}</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="Running-the-Models-and-Measuring-Performance">
+<h2>Running the Models and Measuring Performance<a class="headerlink" href="#Running-the-Models-and-Measuring-Performance" title="Link to this heading">¶</a></h2>
+<p>!!! might want to break this section up</p>
+<p><em>This section runs the models, collects performance metrics, and logs CPU and energy usage. Inline measurements are taken using callbacks, and results are structured for later analysis.</em></p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">results</span> <span class="o">=</span> <span class="p">{}</span>
+
+<span class="n">is_linux</span> <span class="o">=</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;Linux&#39;</span>
+<span class="k">if</span> <span class="n">PYRAPL_AVAILABLE</span> <span class="ow">and</span> <span class="n">is_linux</span><span class="p">:</span>
+    <span class="n">pyRAPL</span><span class="o">.</span><span class="n">setup</span><span class="p">()</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;pyRAPL unavailable. Using CPU usage for power estimation.&quot;</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">model_type</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;matmul_free&#39;</span><span class="p">,</span> <span class="s1">&#39;standard&#39;</span><span class="p">]:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Running </span><span class="si">{</span><span class="n">model_type</span><span class="si">}</span><span class="s2"> model...&quot;</span><span class="p">)</span>
+
+    <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="n">cpu_usage</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">energy_meter</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">if</span> <span class="n">PYRAPL_AVAILABLE</span> <span class="ow">and</span> <span class="n">is_linux</span><span class="p">:</span>
+        <span class="n">energy_meter</span> <span class="o">=</span> <span class="n">pyRAPL</span><span class="o">.</span><span class="n">Measurement</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">model_type</span><span class="si">}</span><span class="s2">_energy&quot;</span><span class="p">)</span>
+        <span class="n">energy_meter</span><span class="o">.</span><span class="n">begin</span><span class="p">()</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">def</span> <span class="nf">measure_callback</span><span class="p">():</span>
+            <span class="n">cpu_percent</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">cpu_percent</span><span class="p">()</span>
+            <span class="n">cpu_usage</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cpu_percent</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">model_type</span> <span class="o">==</span> <span class="s1">&#39;standard&#39;</span><span class="p">:</span>
+            <span class="n">saved_model</span> <span class="o">=</span> <span class="s1">&#39;trained_standard_model.pth&#39;</span>
+        <span class="n">ids_processor</span><span class="p">,</span> <span class="n">test_data</span> <span class="o">=</span> <span class="n">integrate_with_hardware_efficient_ids</span><span class="p">(</span>
+            <span class="n">data_dir</span><span class="o">=</span><span class="n">data_dir</span><span class="p">,</span>
+            <span class="n">chunk_size</span><span class="o">=</span><span class="n">chunk_size</span><span class="p">,</span>
+            <span class="n">saved_model</span><span class="o">=</span><span class="n">saved_model</span><span class="p">,</span>
+            <span class="n">model_type</span><span class="o">=</span><span class="n">model_type</span><span class="p">,</span>
+            <span class="n">epochs</span><span class="o">=</span><span class="n">epochs</span><span class="p">,</span>
+            <span class="n">callback</span><span class="o">=</span><span class="n">measure_callback</span>
+        <span class="p">)</span>
+
+        <span class="n">predictions</span><span class="p">,</span> <span class="n">prediction_scores</span> <span class="o">=</span> <span class="n">ids_processor</span><span class="o">.</span><span class="n">detect_anomalies</span><span class="p">(</span>
+            <span class="n">test_data</span><span class="p">[</span><span class="s1">&#39;X_test&#39;</span><span class="p">],</span>
+            <span class="n">return_scores</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+
+        <span class="n">precision</span><span class="p">,</span> <span class="n">recall</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">precision_recall_curve</span><span class="p">(</span>
+            <span class="n">test_data</span><span class="p">[</span><span class="s1">&#39;y_test&#39;</span><span class="p">],</span>
+            <span class="n">prediction_scores</span>
+        <span class="p">)</span>
+        <span class="n">pr_auc</span> <span class="o">=</span> <span class="n">auc</span><span class="p">(</span><span class="n">recall</span><span class="p">,</span> <span class="n">precision</span><span class="p">)</span>
+
+        <span class="n">classification_metrics</span> <span class="o">=</span> <span class="n">classification_report</span><span class="p">(</span>
+            <span class="n">test_data</span><span class="p">[</span><span class="s1">&#39;y_test&#39;</span><span class="p">],</span>
+            <span class="n">predictions</span><span class="p">,</span>
+            <span class="n">output_dict</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">energy_meter</span><span class="p">:</span>
+            <span class="n">energy_meter</span><span class="o">.</span><span class="n">end</span><span class="p">()</span>
+
+    <span class="n">end_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="n">runtime</span> <span class="o">=</span> <span class="n">end_time</span> <span class="o">-</span> <span class="n">start_time</span>
+    <span class="n">peak_cpu</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">cpu_usage</span><span class="p">)</span> <span class="k">if</span> <span class="n">cpu_usage</span> <span class="k">else</span> <span class="mi">0</span>
+    <span class="n">avg_cpu</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">cpu_usage</span><span class="p">)</span> <span class="k">if</span> <span class="n">cpu_usage</span> <span class="k">else</span> <span class="mi">0</span>
+
+    <span class="k">if</span> <span class="n">energy_meter</span><span class="p">:</span>
+        <span class="n">energy_consumed</span> <span class="o">=</span> <span class="n">energy_meter</span><span class="o">.</span><span class="n">result</span><span class="o">.</span><span class="n">energy</span> <span class="o">/</span> <span class="mf">1e6</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">tdp_watts</span> <span class="o">=</span> <span class="mi">65</span>
+        <span class="n">power_readings</span> <span class="o">=</span> <span class="p">[(</span><span class="n">tdp_watts</span> <span class="o">*</span> <span class="n">usage</span><span class="p">)</span> <span class="o">/</span> <span class="mf">100.0</span> <span class="k">for</span> <span class="n">usage</span> <span class="ow">in</span> <span class="n">cpu_usage</span><span class="p">]</span>
+        <span class="n">energy_consumed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">power_readings</span><span class="p">)</span> <span class="o">*</span> <span class="n">runtime</span> <span class="k">if</span> <span class="n">power_readings</span> <span class="k">else</span> <span class="mi">0</span>
+
+    <span class="n">results</span><span class="p">[</span><span class="n">model_type</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;runtime_seconds&#39;</span><span class="p">:</span> <span class="n">runtime</span><span class="p">,</span>
+        <span class="s1">&#39;peak_cpu_usage_percent&#39;</span><span class="p">:</span> <span class="n">peak_cpu</span><span class="p">,</span>
+        <span class="s1">&#39;avg_cpu_usage_percent&#39;</span><span class="p">:</span> <span class="n">avg_cpu</span><span class="p">,</span>
+        <span class="s1">&#39;energy_consumed_joules&#39;</span><span class="p">:</span> <span class="n">energy_consumed</span><span class="p">,</span>
+        <span class="s1">&#39;classification_report&#39;</span><span class="p">:</span> <span class="n">classification_metrics</span><span class="p">,</span>
+        <span class="s1">&#39;precision&#39;</span><span class="p">:</span> <span class="n">precision</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
+        <span class="s1">&#39;recall&#39;</span><span class="p">:</span> <span class="n">recall</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
+        <span class="s1">&#39;pr_auc&#39;</span><span class="p">:</span> <span class="n">pr_auc</span><span class="p">,</span>
+        <span class="s1">&#39;cpu_usage&#39;</span><span class="p">:</span> <span class="n">cpu_usage</span><span class="p">,</span>
+        <span class="s1">&#39;y_test&#39;</span><span class="p">:</span> <span class="n">test_data</span><span class="p">[</span><span class="s1">&#39;y_test&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+    <span class="p">}</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="si">{</span><span class="n">model_type</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="si">}</span><span class="s2"> MODEL RESULTS:&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Runtime: </span><span class="si">{</span><span class="n">runtime</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> seconds&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Peak CPU Usage: </span><span class="si">{</span><span class="n">peak_cpu</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Average CPU Usage: </span><span class="si">{</span><span class="n">avg_cpu</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Energy Consumed: </span><span class="si">{</span><span class="n">energy_consumed</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> Joules&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;PR-AUC Score: </span><span class="si">{</span><span class="n">pr_auc</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Classification Report:&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;0.0&#39;</span><span class="p">,</span> <span class="s1">&#39;1.0&#39;</span><span class="p">]:</span>
+        <span class="n">metrics</span> <span class="o">=</span> <span class="n">classification_metrics</span><span class="p">[</span><span class="n">label</span><span class="p">]</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Class </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2">:&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Precision: </span><span class="si">{</span><span class="n">metrics</span><span class="p">[</span><span class="s1">&#39;precision&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Recall: </span><span class="si">{</span><span class="n">metrics</span><span class="p">[</span><span class="s1">&#39;recall&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;F1-score: </span><span class="si">{</span><span class="n">metrics</span><span class="p">[</span><span class="s1">&#39;f1-score&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+pyRAPL unavailable. Using CPU usage for power estimation.
+
+Running matmul_free model...
+
+Initializing data processor...
+Loading and preprocessing data...
+
+Processing Tuesday-WorkingHours.pcap_ISCX.csv...
+Processed 445909 total rows
+Removed 0 corrupted rows (0.00%)
+
+Data Statistics:
+Total samples: 445909
+
+Attack distribution:
+BENIGN: 432074 samples (96.90%)
+FTP-Patator: 7938 samples (1.78%)
+SSH-Patator: 5897 samples (1.32%)
+
+Combining processed data...
+Encoding labels...
+Handling missing values in features...
+Final dataset shape: (445909, 78)
+Number of features: 78
+Class distribution: [432074  13835]
+
+Validating data...
+Data validation passed
+
+Splitting data...
+
+Initializing model...
+Loading saved model...
+Loading state dict...
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/var/folders/r4/4v8t12hd3y1253vtxg1gxdp80000gn/T/ipykernel_71311/919803221.py:45: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don&#39;t have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  checkpoint = torch.load(f&#39;{SAVED_MODELS_DIR}/{saved_model}&#39;, map_location=torch.device(&#39;cpu&#39;))
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+MATMUL_FREE MODEL RESULTS:
+Runtime: 26.75 seconds
+Peak CPU Usage: 100.0%
+Average CPU Usage: 74.6%
+Energy Consumed: 1297.00 Joules
+PR-AUC Score: 0.995
+
+Classification Report:
+
+Class 0.0:
+Precision: 1.000
+Recall: 0.997
+F1-score: 0.999
+
+Class 1.0:
+Precision: 0.922
+Recall: 1.000
+F1-score: 0.959
+
+Running standard model...
+
+Initializing data processor...
+Loading and preprocessing data...
+
+Processing Tuesday-WorkingHours.pcap_ISCX.csv...
+Processed 445909 total rows
+Removed 0 corrupted rows (0.00%)
+
+Data Statistics:
+Total samples: 445909
+
+Attack distribution:
+BENIGN: 432074 samples (96.90%)
+FTP-Patator: 7938 samples (1.78%)
+SSH-Patator: 5897 samples (1.32%)
+
+Combining processed data...
+Encoding labels...
+Handling missing values in features...
+Final dataset shape: (445909, 78)
+Number of features: 78
+Class distribution: [432074  13835]
+
+Validating data...
+Data validation passed
+
+Splitting data...
+
+Initializing model...
+Loading saved model...
+Loading state dict...
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/var/folders/r4/4v8t12hd3y1253vtxg1gxdp80000gn/T/ipykernel_71311/919803221.py:45: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don&#39;t have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  checkpoint = torch.load(f&#39;{SAVED_MODELS_DIR}/{saved_model}&#39;, map_location=torch.device(&#39;cpu&#39;))
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+STANDARD MODEL RESULTS:
+Runtime: 6.21 seconds
+Peak CPU Usage: 73.7%
+Average CPU Usage: 56.9%
+Energy Consumed: 229.65 Joules
+PR-AUC Score: 0.997
+
+Classification Report:
+
+Class 0.0:
+Precision: 1.000
+Recall: 0.997
+F1-score: 0.999
+
+Class 1.0:
+Precision: 0.917
+Recall: 0.998
+F1-score: 0.956
+</pre></div></div>
+</div>
+</section>
+<section id="Results-Summary">
+<h2>Results Summary<a class="headerlink" href="#Results-Summary" title="Link to this heading">¶</a></h2>
+<p><em>This cell saves the results into a JSON file for reference and displays a textual summary of the collected data.</em></p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">json</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">results</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)[:</span><span class="mi">500</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+{
+  &#34;matmul_free&#34;: {
+    &#34;runtime_seconds&#34;: 26.747725248336792,
+    &#34;peak_cpu_usage_percent&#34;: 100.0,
+    &#34;avg_cpu_usage_percent&#34;: 74.6,
+    &#34;energy_consumed_joules&#34;: 1296.997197291851,
+    &#34;classification_report&#34;: {
+      &#34;0.0&#34;: {
+        &#34;precision&#34;: 1.0,
+        &#34;recall&#34;: 0.9972921367818087,
+        &#34;f1-score&#34;: 0.9986442327748036,
+        &#34;support&#34;: 86415.0
+      },
+      &#34;1.0&#34;: {
+        &#34;precision&#34;: 0.9220259913362212,
+        &#34;recall&#34;: 1.0,
+        &#34;f1-score&#34;: 0.9594313453536755,
+        &#34;s
+</pre></div></div>
+</div>
+</section>
+<section id="Precision-Recall-Visualization">
+<h2>Precision-Recall Visualization<a class="headerlink" href="#Precision-Recall-Visualization" title="Link to this heading">¶</a></h2>
+<p><em>This cell generates precision-recall curves for each model, providing insights into their classification performance.</em></p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">model_type</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">results</span><span class="p">[</span><span class="n">model_type</span><span class="p">][</span><span class="s1">&#39;recall&#39;</span><span class="p">],</span> <span class="n">results</span><span class="p">[</span><span class="n">model_type</span><span class="p">][</span><span class="s1">&#39;precision&#39;</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;PR Curve&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Recall&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Precision&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">model_type</span><span class="o">.</span><span class="n">capitalize</span><span class="p">()</span><span class="si">}</span><span class="s1"> Model: Precision-Recall Curve&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/pages_main_19_0.png" src="../_images/pages_main_19_0.png" />
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/pages_main_19_1.png" src="../_images/pages_main_19_1.png" />
+</div>
+</div>
+</section>
+<section id="CPU-Usage-Visualization">
+<h2>CPU Usage Visualization<a class="headerlink" href="#CPU-Usage-Visualization" title="Link to this heading">¶</a></h2>
+<p><em>This cell visualizes the CPU usage over time for each model, offering a perspective on computational efficiency.</em></p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="ow">not</span> <span class="n">saved_model</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">model_type</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">results</span><span class="p">[</span><span class="n">model_type</span><span class="p">][</span><span class="s1">&#39;cpu_usage&#39;</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;CPU Usage&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Time&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;CPU Usage (%)&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">model_type</span><span class="o">.</span><span class="n">capitalize</span><span class="p">()</span><span class="si">}</span><span class="s1"> Model: CPU Usage Over Time&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">SAVED_MODELS_DIR</span><span class="si">}</span><span class="s1">/trained_</span><span class="si">{</span><span class="n">model_type</span><span class="si">}</span><span class="s1">_model_</span><span class="si">{</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%m</span><span class="si">%d</span><span class="s2">%Y-%H%M%S&quot;</span><span class="p">)</span><span class="si">}</span><span class="s1">_cpu.png&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">matplotlib.image</span> <span class="k">as</span> <span class="nn">mpimg</span>
+    <span class="k">for</span> <span class="n">saved_model</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;trained_matmulfree_model_12_11_24.pth&quot;</span><span class="p">,</span> <span class="s2">&quot;trained_standard_model.pth&quot;</span><span class="p">]:</span>
+        <span class="n">img_name</span> <span class="o">=</span> <span class="n">saved_model</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;.pth&#39;</span><span class="p">,</span> <span class="s1">&#39;_cpu.png&#39;</span><span class="p">)</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="n">mpimg</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">SAVED_MODELS_DIR</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">img_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s1">&#39;off&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/pages_main_21_0.png" src="../_images/pages_main_21_0.png" />
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/pages_main_21_1.png" src="../_images/pages_main_21_1.png" />
+</div>
+</div>
+</section>
+<section id="Confusion-Matrix-Visualization">
+<h2>Confusion Matrix Visualization<a class="headerlink" href="#Confusion-Matrix-Visualization" title="Link to this heading">¶</a></h2>
+<p><em>This cell visualizes the confusion matrix for each model.</em></p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">model_type</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
+    <span class="n">cm</span> <span class="o">=</span> <span class="n">confusion_matrix</span><span class="p">(</span><span class="n">results</span><span class="p">[</span><span class="n">model_type</span><span class="p">][</span><span class="s1">&#39;y_test&#39;</span><span class="p">],</span> <span class="n">predictions</span><span class="p">)</span>
+    <span class="n">disp</span> <span class="o">=</span> <span class="n">ConfusionMatrixDisplay</span><span class="p">(</span><span class="n">confusion_matrix</span><span class="o">=</span><span class="n">cm</span><span class="p">,</span> <span class="n">display_labels</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Benign&quot;</span><span class="p">,</span> <span class="s2">&quot;Attack&quot;</span><span class="p">])</span>
+    <span class="n">disp</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">cmap</span><span class="o">=</span><span class="n">plt</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">Blues</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Confusion Matrix - </span><span class="si">{</span><span class="n">model_type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/pages_main_23_0.png" src="../_images/pages_main_23_0.png" />
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/pages_main_23_1.png" src="../_images/pages_main_23_1.png" />
+</div>
+</div>
+</section>
+</section>
+<section id="Conclusion">
+<h1>Conclusion<a class="headerlink" href="#Conclusion" title="Link to this heading">¶</a></h1>
+<p>The accuracy of our matmul-free neural network was similar/slightly worse than that of the classical neural network. This is to be expected because there is a slight loss of information when we ternarize the weights instead of going through with full matrix multiplication. In terms of CPU usage, our matmul-free model far outperformed classic model when it comes to usage percentage over the course of the model training. However, the energy usage was higher for our matmul-free implementation which
+could be related to the scale of our training data (a clear limitation as is pointed out in the second article mentioned above).</p>
+</section>
+<section id="Challenges">
+<h1>Challenges<a class="headerlink" href="#Challenges" title="Link to this heading">¶</a></h1>
+<p>The f-1 score was initially very bad for both models but even worse for the matmul-free implementation. This is because the data is so imbalanced class-wise (there are many many more instances of beningn network traces than those with anomalies). We noticed that this caused our models to just classify everything as benign, giving us an f1 score of 0 for attack detection. LDA and PCA both had their own respective complications when we tried implementing them, so we decided to limit our data to
+just Tuesday of the dataset. For reference, the initial dataset included a number of network capture datasets from a full week, with different days boasting different numbers and types of anomalies. Restricting the data to just Tuesday allowed our model to focus on a smaller subset of anomaly types as well as take far less time to train. The only remaining complication was the large class imbalance, which we solved by randomly bootstrapping the training data to inflate the percentage of
+anomalies and help our models train in a more balanced way. This fixed all our problems.</p>
+</section>
+<section id="Limitations">
+<h1>Limitations<a class="headerlink" href="#Limitations" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Our CPU usage and energy measurements are specific to when (and the environments in which) we ran them, which could negatively impact the reproducibility of this research.</p></li>
+<li><p>A limitation to the generalization (general use case) of either of our trained neural networks is that they only work on the specific anomaly types contained on Tuesday (FTP Patator, SSH-Patator). There also could be some learned detection mechanisms that are specific to this data that won’t generalize to unseen network data.</p></li>
+</ul>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">Network Anomaly Detection with BitNet</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Resources:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Project Notebook</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#Notebook-Summary">Notebook Summary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Packages">Packages</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Setup-and-Initialization">Setup and Initialization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Data-Directory-and-Configurations">Data Directory and Configurations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Integration-Function">Integration Function</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Running-the-Models-and-Measuring-Performance">Running the Models and Measuring Performance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Results-Summary">Results Summary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Precision-Recall-Visualization">Precision-Recall Visualization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#CPU-Usage-Visualization">CPU Usage Visualization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Confusion-Matrix-Visualization">Confusion Matrix Visualization</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#Conclusion">Conclusion</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#Challenges">Challenges</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#Limitations">Limitations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="efficient_ids.html">Our Model: Efficient Intrusion Detection System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ids_data_processor.html">Memory-Efficient Data Processor</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ids_processor.html">IDS Wrapper</a></li>
+<li class="toctree-l1"><a class="reference internal" href="standard_ids.html">Baseline IDS Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="proposal.html">Project Proposal</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="../index.html" title="previous chapter">Network Anomaly Detection with BitNet | Intrusion Detection System (IDS)</a></li>
+      <li>Next: <a href="efficient_ids.html" title="next chapter">Our Model: Efficient Intrusion Detection System</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2024, Alexander Baumgartner, Alexander Williams, Alejandro Alonso.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.1.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/pages/main.ipynb.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
